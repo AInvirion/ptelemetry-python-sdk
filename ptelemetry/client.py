@@ -53,7 +53,7 @@ class Telemetry:
 
         Args:
             write_key: Project write key (or set OPS_WRITE_KEY env var)
-            api_url: API endpoint URL (default: https://api.openproductstats.com)
+            api_url: API endpoint URL (default: https://producttelemetry.com/api)
             disabled: Disable all telemetry (or set DO_NOT_TRACK=1 / OPS_TELEMETRY=0)
             flush_interval: Seconds between automatic flushes (default: 30)
             flush_at: Number of events to trigger a flush (default: 10)
@@ -78,6 +78,7 @@ class Telemetry:
         # Event queue
         self._queue: list[dict] = []
         self._queue_lock = threading.Lock()
+        self._persist_lock = threading.Lock()  # Serialize file persistence
 
         # Client ID (lazily loaded)
         self._client_id: str | None = None
@@ -101,7 +102,11 @@ class Telemetry:
             return True
 
         # Config file check
-        config_path = self._get_config_dir() / "config.json"
+        config_dir = self._get_config_dir()
+        if config_dir is None:
+            return False  # Can't check config, assume not opted out
+
+        config_path = config_dir / "config.json"
         if config_path.exists():
             try:
                 config = json.loads(config_path.read_text())
@@ -115,53 +120,68 @@ class Telemetry:
 
         return False
 
-    def _get_config_dir(self) -> Path:
-        """Get the config directory for this project."""
-        base = Path.home() / ".config" / "producttelemetry" / self._project_slug
-        base.mkdir(parents=True, exist_ok=True)
-        return base
+    def _get_config_dir(self) -> Path | None:
+        """Get the config directory for this project. Returns None if unavailable."""
+        try:
+            base = Path.home() / ".config" / "producttelemetry" / self._project_slug
+            base.mkdir(parents=True, exist_ok=True, mode=0o700)
+            return base
+        except OSError as e:
+            logger.debug("Cannot create config directory: %s", e)
+            return None
 
     def _get_client_id(self) -> str:
         """Get or create a persistent client ID."""
         if self._client_id:
             return self._client_id
 
-        client_id_path = self._get_config_dir() / "client_id"
-
-        if client_id_path.exists():
-            self._client_id = client_id_path.read_text().strip()
-        else:
+        config_dir = self._get_config_dir()
+        if config_dir is None:
+            # Can't persist, use ephemeral ID
             self._client_id = str(uuid.uuid4())
-            client_id_path.write_text(self._client_id)
+            return self._client_id
+
+        client_id_path = config_dir / "client_id"
+
+        try:
+            if client_id_path.exists():
+                self._client_id = client_id_path.read_text().strip()
+            else:
+                self._client_id = str(uuid.uuid4())
+                client_id_path.write_text(self._client_id)
+        except OSError:
+            self._client_id = str(uuid.uuid4())
 
         return self._client_id
 
-    def _get_pending_events_path(self) -> Path:
-        """Get the path for persisted offline events."""
-        return self._get_config_dir() / "pending_events.json"
+    def _get_pending_events_path(self) -> Path | None:
+        """Get the path for persisted offline events. Returns None if unavailable."""
+        config_dir = self._get_config_dir()
+        return config_dir / "pending_events.json" if config_dir else None
 
     def _load_pending_events(self) -> None:
         """Load any persisted events from disk into the queue."""
         pending_path = self._get_pending_events_path()
-        if not pending_path.exists():
+        if pending_path is None or not pending_path.exists():
             return
 
-        try:
-            data = json.loads(pending_path.read_text())
-            events = data.get("events", [])
-            if events:
-                with self._queue_lock:
-                    # Merge with any existing queue, keeping most recent up to max
-                    combined = self._queue + events
-                    if len(combined) > self._max_queue_size:
-                        # Keep most recent events (they're at the end)
-                        combined = combined[-self._max_queue_size:]
-                    self._queue = combined
-                logger.debug("Loaded %d pending events from disk", len(events))
-            # Clear the file after loading
-            pending_path.unlink()
-        except Exception as e:
-            logger.debug("Failed to load pending events: %s", e)
+        with self._persist_lock:
+            try:
+                data = json.loads(pending_path.read_text())
+                events = data.get("events", [])
+                if events:
+                    with self._queue_lock:
+                        # Merge with any existing queue, keeping most recent up to max
+                        combined = self._queue + events
+                        if len(combined) > self._max_queue_size:
+                            # Keep most recent events (they're at the end)
+                            combined = combined[-self._max_queue_size:]
+                        self._queue = combined
+                    logger.debug("Loaded %d pending events from disk", len(events))
+                # Clear the file after loading
+                pending_path.unlink()
+            except Exception as e:
+                logger.debug("Failed to load pending events: %s", e)
 
     def _persist_events(self, events: list[dict]) -> None:
         """Persist events to disk for offline storage."""
@@ -169,27 +189,30 @@ class Telemetry:
             return
 
         pending_path = self._get_pending_events_path()
+        if pending_path is None:
+            return  # Can't persist without config dir
 
-        try:
-            # Load existing persisted events
-            existing: list[dict] = []
-            if pending_path.exists():
-                try:
-                    data = json.loads(pending_path.read_text())
-                    existing = data.get("events", [])
-                except Exception:
-                    pass
+        with self._persist_lock:
+            try:
+                # Load existing persisted events
+                existing: list[dict] = []
+                if pending_path.exists():
+                    try:
+                        data = json.loads(pending_path.read_text())
+                        existing = data.get("events", [])
+                    except Exception:
+                        pass
 
-            # Combine and trim to max size (keep most recent)
-            combined = existing + events
-            if len(combined) > self._max_queue_size:
-                combined = combined[-self._max_queue_size:]
+                # Combine and trim to max size (keep most recent)
+                combined = existing + events
+                if len(combined) > self._max_queue_size:
+                    combined = combined[-self._max_queue_size:]
 
-            # Write to disk
-            pending_path.write_text(json.dumps({"events": combined}, default=str))
-            logger.debug("Persisted %d events to disk (total: %d)", len(events), len(combined))
-        except Exception as e:
-            logger.debug("Failed to persist events: %s", e)
+                # Write to disk
+                pending_path.write_text(json.dumps({"events": combined}, default=str))
+                logger.debug("Persisted %d events to disk (total: %d)", len(events), len(combined))
+            except Exception as e:
+                logger.debug("Failed to persist events: %s", e)
 
     def _shutdown_handler(self) -> None:
         """Handle shutdown: try to flush, persist remaining events."""
@@ -260,14 +283,16 @@ class Telemetry:
             "event_type": event_type,
             "client_id": self._get_client_id(),
             "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
-            "properties": properties or {},
+            "properties": dict(properties) if properties else {},  # Copy to avoid mutation
         }
 
         with self._queue_lock:
-            if len(self._queue) < self._max_queue_size:
-                self._queue.append(event)
+            if len(self._queue) >= self._max_queue_size:
+                logger.debug("Event queue full, dropping oldest event")
+                self._queue.pop(0)  # Drop oldest to make room
+            self._queue.append(event)
 
-                if len(self._queue) >= self._flush_at:
+            if len(self._queue) >= self._flush_at:
                     # Flush in background thread
                     threading.Thread(target=self.flush, daemon=True).start()
 
@@ -341,11 +366,21 @@ class Telemetry:
                     headers={"X-Write-Key": self._write_key},
                 )
                 if response.status_code in (200, 202):
-                    # Clear local client ID
-                    client_id_path = self._get_config_dir() / "client_id"
-                    if client_id_path.exists():
-                        client_id_path.unlink()
+                    # Clear all local data for GDPR compliance
+                    config_dir = self._get_config_dir()
+                    if config_dir:
+                        # Clear client ID
+                        client_id_path = config_dir / "client_id"
+                        if client_id_path.exists():
+                            client_id_path.unlink()
+                        # Clear pending events
+                        pending_path = config_dir / "pending_events.json"
+                        if pending_path.exists():
+                            pending_path.unlink()
+                    # Clear in-memory data
                     self._client_id = None
+                    with self._queue_lock:
+                        self._queue.clear()
                     return True
         except Exception as e:
             logger.debug("Failed to request deletion: %s", e)

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.4] - 2026-04-08
+
+### Fixed
+
+- **Critical**: Added file lock to prevent race condition in offline persistence
+- **Critical**: Copy properties dict to prevent mutation affecting queued events
+- **Security**: Config directory now created with 0o700 permissions
+- **GDPR**: `request_deletion()` now clears offline events and in-memory queue
+- Graceful fallback when config directory is unavailable (read-only HOME)
+- Queue now drops oldest events when full instead of silently rejecting new ones
+- Fixed docstring with correct default API URL
+
 ## [0.1.3] - 2026-04-08
 
 ### Added
@@ -59,6 +71,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Client IDs stored locally in user config directory
 - Support for DO_NOT_TRACK and custom opt-out mechanisms
 
+[0.1.4]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.1.4
 [0.1.3]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.1.3
 [0.1.2]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.1.2
 [0.1.1]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.1.1
