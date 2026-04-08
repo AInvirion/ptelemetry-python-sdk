@@ -1,43 +1,30 @@
-name: Template Validation
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  validate:
-    name: Validate Template Files
+  test:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11', '3.12']
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Check required files exist
-      run: |
-        test -f LICENSE
-        test -f README.md
-        test -f CONTRIBUTING.md
-        test -f SECURITY.md
-        test -f CODE_OF_CONDUCT.md
-        test -f .clabot
-        echo "All required template files present"
-
-    - name: Validate markdown files
-      uses: DavidAnson/markdownlint-cli2-action@v23
-      with:
-        globs: '**/*.md'
-        config: |
-          {
-            "default": true,
-            "MD013": false,
-            "MD033": false,
-            "MD041": false
-          }
-      continue-on-error: true
-
-    - name: Check for placeholder text
-      run: |
-        echo "Note: Remember to replace [Project Name] and other placeholders when using this template"
+      - uses: actions/checkout@v4
+      
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+      
+      - name: Run tests
+        run: pytest tests/ -v
+      
+      - name: Build package
+        run: python -m build

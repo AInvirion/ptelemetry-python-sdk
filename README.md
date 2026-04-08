@@ -1,79 +1,79 @@
-# [Project Name]
+# ProductTelemetry SDK (Python)
 
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![GitHub Issues](https://img.shields.io/github/issues/ainvirion/[project-name].svg)](https://github.com/ainvirion/[project-name]/issues)
-[![GitHub Pull Requests](https://img.shields.io/github/issues-pr/ainvirion/[project-name].svg)](https://github.com/ainvirion/[project-name]/pulls)
+Privacy-first product analytics and telemetry SDK
 
-> A brief description of what this project does and who it's for
-
-## Table of Contents
-
-- [About](#about)
-- [Features](#features)
-- [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-- [Usage](#usage)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [Security](#security)
-- [License](#license)
-
-## About
-
-[Provide a more detailed description of your project. Explain what problem it solves, why it exists, and what makes it unique.]
+[![PyPI version](https://img.shields.io/pypi/v/ptelemetry.svg)](https://pypi.org/project/ptelemetry/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+[![Python Versions](https://img.shields.io/pypi/pyversions/ptelemetry.svg)](https://pypi.org/project/ptelemetry/)
 
 ## Features
 
-- Feature 1: Description
-- Feature 2: Description
-- Feature 3: Description
+- 🔒 **Privacy-first** - IP hashing, GDPR compliant
+- 📊 **Event tracking** - Lifecycle, usage, and error events
+- 🔗 **User identification** - Link anonymous users to known IDs
+- 🗑️ **GDPR deletion** - Self-service data deletion requests
+- 🚫 **Multiple opt-out mechanisms** - DO_NOT_TRACK, config file, env vars
+- 📦 **Minimal dependencies** - Only httpx required
+- 🔄 **Thread-safe** - Use from multiple threads safely
+- ⚡ **Automatic batching** - Efficient event queueing and flushing
 
-## Getting Started
-
-### Prerequisites
-
-List the dependencies and requirements needed to use this project:
-
-```bash
-# Example
-node >= 18.0.0
-npm >= 9.0.0
-```
-
-### Installation
+## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/ainvirion/[project-name].git
-
-# Navigate to the project directory
-cd [project-name]
-
-# Install dependencies
-npm install
+pip install ptelemetry
 ```
 
-## Usage
+## Quick Start
 
-Provide examples of how to use your project:
+```python
+from ptelemetry import Telemetry
 
-```bash
-# Example command
-npm start
+t = Telemetry(write_key='proj_wk_xxxxx')
+
+# Track events
+t.track('feature.used', {'feature': 'export'})
+
+# Track errors
+try:
+    risky_operation()
+except Exception as e:
+    t.error(exception=e)
+
+# Link to user
+t.identify('user_123')
 ```
-
-For more examples and usage details, please refer to the [Documentation](#documentation).
 
 ## Documentation
 
-- [API Documentation](docs/API.md)
-- [User Guide](docs/USER_GUIDE.md)
-- [Developer Guide](docs/DEVELOPER_GUIDE.md)
+- [Getting Started](docs/getting-started.md) - Installation, configuration, troubleshooting
+- [API Reference](docs/api-reference.md) - Complete API documentation
+- [Examples](docs/examples.md) - Real-world usage examples
+
+## Links
+
+- [ProductTelemetry Platform](https://github.com/AInvirion/Product-Telemetry)
+- [JavaScript/TypeScript SDK](https://github.com/AInvirion/ptelemetry-npm-sdk)
+- [PyPI Package](https://pypi.org/project/ptelemetry/)
 
 ## Contributing
 
-We welcome contributions from the community! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
+We welcome contributions! Please read our [Contributing Guidelines](CONTRIBUTING.md) before submitting a pull request.
+
+### Development Setup
+
+```bash
+# Install dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest tests/ -v
+
+# Build package
+python -m build
+
+# Install git hooks (Codex quality checks)
+./scripts/setup-hooks.sh
+```
 
 ## Security
 
@@ -81,6 +81,6 @@ If you discover a security vulnerability, please follow our [Security Policy](SE
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+MIT - see [LICENSE](LICENSE) file for details.
 
 Copyright (c) 2025-2026 AInvirion LLC. All Rights Reserved.
