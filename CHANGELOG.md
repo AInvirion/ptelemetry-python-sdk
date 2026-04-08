@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-04-08
+
+### Fixed
+
+- **Critical**: Fixed Python 3.9/3.10 compatibility by replacing `datetime.UTC` with `timezone.utc`
+- **Critical**: Fixed `error()` method to properly capture stack traces using `traceback.format_exception()`
+- **Security**: Added path traversal protection for `project_slug` parameter
+- **Security**: Opt-out config now fails closed - malformed config disables telemetry (privacy-first)
+
+### Changed
+
+- Removed accidentally committed `.pyc` bytecode files
+- Updated `.gitignore` with Python-specific patterns
+- Bumped `actions/checkout` from v4 to v6 in CI workflows
+
 ## [0.1.0] - 2026-04-08
 
 ### Added
@@ -27,4 +42,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Client IDs stored locally in user config directory
 - Support for DO_NOT_TRACK and custom opt-out mechanisms
 
+[0.1.1]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.1.1
 [0.1.0]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.1.0
