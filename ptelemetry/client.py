@@ -7,10 +7,11 @@ import atexit
 import json
 import logging
 import os
+import re
 import threading
 import traceback
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Literal
 
@@ -61,6 +62,11 @@ class Telemetry:
         """
         self._write_key = write_key or os.environ.get("OPS_WRITE_KEY", "")
         self._api_url = (api_url or os.environ.get("OPS_API_URL", DEFAULT_API_URL)).rstrip("/")
+        # Sanitize project_slug to prevent path traversal
+        if not re.match(r"^[a-zA-Z0-9_-]+$", project_slug):
+            raise ValueError(
+                f"Invalid project_slug '{project_slug}': must contain only alphanumeric, dash, or underscore"
+            )
         self._project_slug = project_slug
         self._flush_interval = flush_interval
         self._flush_at = flush_at
@@ -99,8 +105,11 @@ class Telemetry:
                 config = json.loads(config_path.read_text())
                 if config.get("telemetry") is False:
                     return True
-            except Exception:
-                pass
+            except Exception as e:
+                # Fail closed: if user has a config file but it's unreadable/malformed,
+                # assume they intended to opt out (privacy-first)
+                logger.warning("Failed to parse opt-out config, disabling telemetry: %s", e)
+                return True
 
         return False
 
@@ -161,7 +170,7 @@ class Telemetry:
             "event_name": event_name,
             "event_type": event_type,
             "client_id": self._get_client_id(),
-            "timestamp": (timestamp or datetime.now(UTC)).isoformat(),
+            "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
             "properties": properties or {},
         }
 
@@ -192,7 +201,9 @@ class Telemetry:
         if exception:
             props["error_type"] = type(exception).__name__
             props["error_message"] = str(exception)
-            props["stack_trace"] = traceback.format_exc()
+            props["stack_trace"] = "".join(
+                traceback.format_exception(type(exception), exception, exception.__traceback__)
+            )
         elif message:
             props["error_message"] = message
 
