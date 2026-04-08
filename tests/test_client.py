@@ -23,13 +23,13 @@ def temp_config_dir(tmp_path):
 def mock_api():
     """Mock the API endpoints."""
     with respx.mock(base_url="https://api.test.com", assert_all_called=False) as respx_mock:
-        respx_mock.post("/api/ingest").mock(
+        respx_mock.post("/ingest").mock(
             return_value=httpx.Response(200, json={"accepted": 1, "rejected": 0})
         )
-        respx_mock.post("/api/identify").mock(
+        respx_mock.post("/identify").mock(
             return_value=httpx.Response(200, json={"linked": True, "created": True})
         )
-        respx_mock.request("DELETE", "/api/gdpr/delete-self").mock(
+        respx_mock.request("DELETE", "/gdpr/delete-self").mock(
             return_value=httpx.Response(202, json={"status": "pending"})
         )
         yield respx_mock
@@ -160,12 +160,12 @@ class TestFlush:
         t.flush()
 
         assert len(t._queue) == 0
-        assert mock_api.calls.last.request.url.path == "/api/ingest"
+        assert mock_api.calls.last.request.url.path == "/ingest"
         t.shutdown()
 
     def test_flush_requeues_on_failure(self, temp_config_dir):
         with respx.mock(base_url="https://api.test.com") as mock:
-            mock.post("/api/ingest").mock(return_value=httpx.Response(500))
+            mock.post("/ingest").mock(return_value=httpx.Response(500))
 
             t = Telemetry(write_key="test", api_url="https://api.test.com", flush_at=100)
             t.track("test.event")
@@ -181,7 +181,7 @@ class TestIdentify:
         t = Telemetry(write_key="test", api_url="https://api.test.com")
         t.identify("user_123")
 
-        assert any(c.request.url.path == "/api/identify" for c in mock_api.calls)
+        assert any(c.request.url.path == "/identify" for c in mock_api.calls)
         t.shutdown()
 
 
@@ -207,4 +207,4 @@ class TestContextManager:
             t.track("test.event")
 
         # Should have flushed on exit
-        assert any(c.request.url.path == "/api/ingest" for c in mock_api.calls)
+        assert any(c.request.url.path == "/ingest" for c in mock_api.calls)

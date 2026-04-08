@@ -22,7 +22,7 @@ logger = logging.getLogger("producttelemetry")
 EventType = Literal["lifecycle", "usage", "error"]
 
 # Default API endpoint
-DEFAULT_API_URL = "https://api.producttelemetry.com"
+DEFAULT_API_URL = "https://producttelemetry.com/api"
 
 
 class Telemetry:
@@ -223,7 +223,7 @@ class Telemetry:
         try:
             with httpx.Client(timeout=10.0) as client:
                 client.post(
-                    f"{self._api_url}/api/identify",
+                    f"{self._api_url}/identify",
                     json={
                         "client_id": self._get_client_id(),
                         "user_id": user_id,
@@ -247,7 +247,7 @@ class Telemetry:
             with httpx.Client(timeout=10.0) as client:
                 response = client.request(
                     "DELETE",
-                    f"{self._api_url}/api/gdpr/delete-self",
+                    f"{self._api_url}/gdpr/delete-self",
                     json={"client_id": self._get_client_id()},
                     headers={"X-Write-Key": self._write_key},
                 )
@@ -277,7 +277,7 @@ class Telemetry:
         try:
             with httpx.Client(timeout=10.0) as client:
                 response = client.post(
-                    f"{self._api_url}/api/ingest",
+                    f"{self._api_url}/ingest",
                     json={"events": events},
                     headers={"X-Write-Key": self._write_key},
                 )
