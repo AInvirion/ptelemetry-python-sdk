@@ -86,9 +86,11 @@ class Telemetry:
         self._timer: threading.Timer | None = None
         self._shutdown = False
 
+        # Load any persisted offline events
         if not self._disabled and self._write_key:
+            self._load_pending_events()
             self._start_flush_timer()
-            atexit.register(self.flush)
+            atexit.register(self._shutdown_handler)
 
     def _check_opt_out(self) -> bool:
         """Check all opt-out mechanisms."""
@@ -133,6 +135,93 @@ class Telemetry:
             client_id_path.write_text(self._client_id)
 
         return self._client_id
+
+    def _get_pending_events_path(self) -> Path:
+        """Get the path for persisted offline events."""
+        return self._get_config_dir() / "pending_events.json"
+
+    def _load_pending_events(self) -> None:
+        """Load any persisted events from disk into the queue."""
+        pending_path = self._get_pending_events_path()
+        if not pending_path.exists():
+            return
+
+        try:
+            data = json.loads(pending_path.read_text())
+            events = data.get("events", [])
+            if events:
+                with self._queue_lock:
+                    # Merge with any existing queue, keeping most recent up to max
+                    combined = self._queue + events
+                    if len(combined) > self._max_queue_size:
+                        # Keep most recent events (they're at the end)
+                        combined = combined[-self._max_queue_size:]
+                    self._queue = combined
+                logger.debug("Loaded %d pending events from disk", len(events))
+            # Clear the file after loading
+            pending_path.unlink()
+        except Exception as e:
+            logger.debug("Failed to load pending events: %s", e)
+
+    def _persist_events(self, events: list[dict]) -> None:
+        """Persist events to disk for offline storage."""
+        if not events:
+            return
+
+        pending_path = self._get_pending_events_path()
+
+        try:
+            # Load existing persisted events
+            existing: list[dict] = []
+            if pending_path.exists():
+                try:
+                    data = json.loads(pending_path.read_text())
+                    existing = data.get("events", [])
+                except Exception:
+                    pass
+
+            # Combine and trim to max size (keep most recent)
+            combined = existing + events
+            if len(combined) > self._max_queue_size:
+                combined = combined[-self._max_queue_size:]
+
+            # Write to disk
+            pending_path.write_text(json.dumps({"events": combined}, default=str))
+            logger.debug("Persisted %d events to disk (total: %d)", len(events), len(combined))
+        except Exception as e:
+            logger.debug("Failed to persist events: %s", e)
+
+    def _shutdown_handler(self) -> None:
+        """Handle shutdown: try to flush, persist remaining events."""
+        self._shutdown = True
+        if self._timer:
+            self._timer.cancel()
+
+        # Try to flush
+        with self._queue_lock:
+            if not self._queue:
+                return
+            events = self._queue.copy()
+            self._queue.clear()
+
+        if not events:
+            return
+
+        # Attempt to send
+        try:
+            with httpx.Client(timeout=5.0) as client:
+                response = client.post(
+                    f"{self._api_url}/ingest",
+                    json={"events": events},
+                    headers={"X-Write-Key": self._write_key},
+                )
+                if response.status_code in (200, 207):
+                    return  # Success, events sent
+        except Exception:
+            pass
+
+        # Failed to send, persist to disk
+        self._persist_events(events)
 
     def _start_flush_timer(self) -> None:
         """Start the background flush timer."""
@@ -282,23 +371,16 @@ class Telemetry:
                     headers={"X-Write-Key": self._write_key},
                 )
                 if response.status_code not in (200, 207):
-                    # Re-queue events on failure (up to max size)
-                    with self._queue_lock:
-                        remaining = self._max_queue_size - len(self._queue)
-                        self._queue = events[:remaining] + self._queue
+                    # Server error - persist to disk for later retry
+                    self._persist_events(events)
         except Exception as e:
-            logger.debug("Failed to flush events: %s", e)
-            # Re-queue on network failure
-            with self._queue_lock:
-                remaining = self._max_queue_size - len(self._queue)
-                self._queue = events[:remaining] + self._queue
+            logger.debug("Failed to flush events (offline?): %s", e)
+            # Network failure - persist to disk for later retry
+            self._persist_events(events)
 
     def shutdown(self) -> None:
         """Shutdown the client, flushing remaining events."""
-        self._shutdown = True
-        if self._timer:
-            self._timer.cancel()
-        self.flush()
+        self._shutdown_handler()
 
     def __enter__(self) -> Telemetry:
         return self

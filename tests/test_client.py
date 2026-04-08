@@ -163,7 +163,7 @@ class TestFlush:
         assert mock_api.calls.last.request.url.path == "/ingest"
         t.shutdown()
 
-    def test_flush_requeues_on_failure(self, temp_config_dir):
+    def test_flush_persists_on_failure(self, temp_config_dir):
         with respx.mock(base_url="https://api.test.com") as mock:
             mock.post("/ingest").mock(return_value=httpx.Response(500))
 
@@ -171,8 +171,12 @@ class TestFlush:
             t.track("test.event")
             t.flush()
 
-            # Event should be re-queued
-            assert len(t._queue) == 1
+            # Event should be persisted to disk (not in memory queue)
+            assert len(t._queue) == 0
+            pending_path = temp_config_dir / "pending_events.json"
+            assert pending_path.exists()
+            data = json.loads(pending_path.read_text())
+            assert len(data["events"]) == 1
             t.shutdown()
 
 
@@ -208,3 +212,40 @@ class TestContextManager:
 
         # Should have flushed on exit
         assert any(c.request.url.path == "/ingest" for c in mock_api.calls)
+
+
+class TestOfflinePersistence:
+    def test_loads_pending_events_on_init(self, temp_config_dir):
+        # Pre-seed pending events
+        pending_path = temp_config_dir / "pending_events.json"
+        pending_path.write_text(json.dumps({
+            "events": [
+                {"event_name": "old.event", "event_type": "usage", "client_id": "test", "timestamp": "2026-01-01T00:00:00Z", "properties": {}}
+            ]
+        }))
+
+        t = Telemetry(write_key="test", api_url="https://api.test.com", flush_at=100)
+
+        # Should load the pending event
+        assert len(t._queue) == 1
+        assert t._queue[0]["event_name"] == "old.event"
+
+        # File should be deleted after load
+        assert not pending_path.exists()
+        t.shutdown()
+
+    def test_trims_to_max_queue_size(self, temp_config_dir):
+        # Pre-seed with max events
+        pending_path = temp_config_dir / "pending_events.json"
+        events = [{"event_name": f"event.{i}", "event_type": "usage", "client_id": "test", "timestamp": "2026-01-01T00:00:00Z", "properties": {}} for i in range(1000)]
+        pending_path.write_text(json.dumps({"events": events}))
+
+        t = Telemetry(write_key="test", api_url="https://api.test.com", flush_at=2000, max_queue_size=1000)
+
+        # Should load max 1000
+        assert len(t._queue) == 1000
+
+        # Adding more should be blocked
+        t.track("new.event")
+        assert len(t._queue) == 1000  # Still 1000
+        t.shutdown()
