@@ -1,8 +1,7 @@
 name: Publish to PyPI
 
+# Only runs manually when you're ready to publish
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 jobs:
