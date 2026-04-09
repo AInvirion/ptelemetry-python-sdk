@@ -1,5 +1,10 @@
 # Getting Started
 
+## Requirements
+
+- **Python**: >= 3.9
+- **Dependencies**: httpx >= 0.24.0
+
 ## Installation
 
 Install via pip:

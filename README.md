@@ -2,20 +2,16 @@
 
 Privacy-first product analytics and telemetry SDK
 
-[![PyPI version](https://img.shields.io/pypi/v/ptelemetry.svg)](https://pypi.org/project/ptelemetry/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-[![Python Versions](https://img.shields.io/pypi/pyversions/ptelemetry.svg)](https://pypi.org/project/ptelemetry/)
-
 ## Features
 
-- 🔒 **Privacy-first** - IP hashing, GDPR compliant
-- 📊 **Event tracking** - Lifecycle, usage, and error events
-- 🔗 **User identification** - Link anonymous users to known IDs
-- 🗑️ **GDPR deletion** - Self-service data deletion requests
-- 🚫 **Multiple opt-out mechanisms** - DO_NOT_TRACK, config file, env vars
-- 📦 **Minimal dependencies** - Only httpx required
-- 🔄 **Thread-safe** - Use from multiple threads safely
-- ⚡ **Automatic batching** - Efficient event queueing and flushing
+- **Privacy-first** - IP hashing, GDPR compliant
+- **Event tracking** - Lifecycle, usage, and error events
+- **User identification** - Link anonymous users to known IDs
+- **GDPR deletion** - Self-service data deletion requests
+- **Multiple opt-out mechanisms** - DO_NOT_TRACK, config file, env vars
+- **Minimal dependencies** - Only httpx required
+- **Thread-safe** - Use from multiple threads safely
+- **Automatic batching** - Efficient event queueing and flushing
 
 ## Installation
 
