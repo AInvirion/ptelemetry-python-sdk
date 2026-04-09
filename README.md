@@ -47,7 +47,7 @@ t.identify('user_123')
 
 ## Links
 
-- [ProductTelemetry Platform](https://github.com/AInvirion/Product-Telemetry)
+- [Product Telemetry Platform](https://ptelemetry.com)
 - [JavaScript/TypeScript SDK](https://github.com/AInvirion/ptelemetry-npm-sdk)
 - [PyPI Package](https://pypi.org/project/ptelemetry/)
 
