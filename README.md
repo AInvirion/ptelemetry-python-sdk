@@ -66,9 +66,6 @@ pytest tests/ -v
 
 # Build package
 python -m build
-
-# Install git hooks (Codex quality checks)
-./scripts/setup-hooks.sh
 ```
 
 ## Security

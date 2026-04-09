@@ -220,21 +220,7 @@ After cloning the repo:
 
 ```bash
 pip install -e ".[dev]"
-./scripts/setup-hooks.sh  # Install Codex pre-push hooks
 pytest tests/ -v
-```
-
-### Pre-Push Quality Checks
-
-Before pushing, Codex automatically runs:
-- **Code review**: Quality, patterns, best practices
-- **Security review**: Vulnerabilities, injection risks
-- **Duplicate detection**: Code duplication
-- **Dead code detection**: Unused code
-
-**Run manually:**
-```bash
-codex review && codex security && codex duplicates && codex dead-code
 ```
 
 **Skip hooks** (not recommended):
