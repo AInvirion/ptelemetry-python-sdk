@@ -83,6 +83,9 @@ class Telemetry:
         # Client ID (lazily loaded)
         self._client_id: str | None = None
 
+        # Session ID (unique per instantiation for funnel tracking)
+        self._session_id: str = str(uuid.uuid4())
+
         # Background flush timer
         self._timer: threading.Timer | None = None
         self._shutdown = False
@@ -282,6 +285,7 @@ class Telemetry:
             "event_name": event_name,
             "event_type": event_type,
             "client_id": self._get_client_id(),
+            "session_id": self._session_id,
             "timestamp": (timestamp or datetime.now(timezone.utc)).isoformat(),
             "properties": dict(properties) if properties else {},  # Copy to avoid mutation
         }
