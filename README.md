@@ -1,4 +1,4 @@
-# ProductTelemetry SDK (Python)
+# Product Telemetry SDK (Python)
 
 Privacy-first product analytics and telemetry SDK
 
