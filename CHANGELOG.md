@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1] - 2026-04-09
+
+### Changed
+
+- Updated LICENSE to simplified MIT format
+- Removed development git hooks setup
+- Cleaned up README formatting and removed badge icons
+- Added Requirements section to getting-started docs
+
 ## [0.2.0] - 2026-04-08
 
 ### Added
@@ -79,6 +88,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Client IDs stored locally in user config directory
 - Support for DO_NOT_TRACK and custom opt-out mechanisms
 
+[0.2.1]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.2.1
 [0.2.0]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.2.0
 [0.1.4]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.1.4
 [0.1.3]: https://github.com/AInvirion/ptelemetry-python-sdk/releases/tag/v0.1.3
