@@ -41,6 +41,7 @@ class Telemetry:
     def __init__(
         self,
         write_key: str | None = None,
+        ingest_key: str | None = None,
         api_url: str | None = None,
         disabled: bool = False,
         flush_interval: float = 30.0,
@@ -52,7 +53,8 @@ class Telemetry:
         Initialize the telemetry client.
 
         Args:
-            write_key: Project write key (or set OPS_WRITE_KEY env var)
+            write_key: Project write key (deprecated, use ingest_key)
+            ingest_key: Project ingest key (or set OPS_INGEST_KEY env var)
             api_url: API endpoint URL (default: https://producttelemetry.com/api)
             disabled: Disable all telemetry (or set DO_NOT_TRACK=1 / OPS_TELEMETRY=0)
             flush_interval: Seconds between automatic flushes (default: 30)
@@ -60,7 +62,13 @@ class Telemetry:
             max_queue_size: Maximum events to queue before dropping (default: 1000)
             project_slug: Project slug for client_id isolation (default: "default")
         """
-        self._write_key = write_key or os.environ.get("OPS_WRITE_KEY", "")
+        # Support both ingest_key (preferred) and write_key (deprecated) for backwards compatibility
+        self._write_key = (
+            ingest_key
+            or write_key
+            or os.environ.get("OPS_INGEST_KEY")
+            or os.environ.get("OPS_WRITE_KEY", "")
+        )
         self._api_url = (api_url or os.environ.get("OPS_API_URL", DEFAULT_API_URL)).rstrip("/")
         # Sanitize project_slug to prevent path traversal
         if not re.match(r"^[a-zA-Z0-9_-]+$", project_slug):
