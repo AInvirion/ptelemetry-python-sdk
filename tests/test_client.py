@@ -42,10 +42,37 @@ class TestTelemetryInit:
         assert not t._disabled
         t.shutdown()
 
+    def test_init_with_ingest_key(self, temp_config_dir):
+        """Test ingest_key parameter (preferred over write_key)."""
+        t = Telemetry(ingest_key="ik_test_key")
+        assert t._write_key == "ik_test_key"
+        assert not t._disabled
+        t.shutdown()
+
+    def test_ingest_key_takes_precedence(self, temp_config_dir):
+        """Test that ingest_key takes precedence over write_key."""
+        t = Telemetry(ingest_key="ik_new", write_key="wk_old")
+        assert t._write_key == "ik_new"
+        t.shutdown()
+
     def test_init_from_env_var(self, temp_config_dir):
         with patch.dict(os.environ, {"OPS_WRITE_KEY": "env_key"}):
             t = Telemetry()
             assert t._write_key == "env_key"
+            t.shutdown()
+
+    def test_init_from_ingest_key_env_var(self, temp_config_dir):
+        """Test OPS_INGEST_KEY env var (preferred over OPS_WRITE_KEY)."""
+        with patch.dict(os.environ, {"OPS_INGEST_KEY": "ik_env_key"}):
+            t = Telemetry()
+            assert t._write_key == "ik_env_key"
+            t.shutdown()
+
+    def test_ingest_key_env_takes_precedence(self, temp_config_dir):
+        """Test that OPS_INGEST_KEY takes precedence over OPS_WRITE_KEY."""
+        with patch.dict(os.environ, {"OPS_INGEST_KEY": "ik_new", "OPS_WRITE_KEY": "wk_old"}):
+            t = Telemetry()
+            assert t._write_key == "ik_new"
             t.shutdown()
 
     def test_init_disabled(self, temp_config_dir):
