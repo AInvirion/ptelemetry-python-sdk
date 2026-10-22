@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- **Python**: >= 3.9
+- **Python**: >= 3.10
 - **Dependencies**: httpx >= 0.24.0
 
 ## Installation
@@ -99,7 +99,7 @@ Check that `~/.config/producttelemetry/<project_slug>/client_id` file is writabl
 
 ### Import errors
 
-Ensure Python 3.9+ is installed:
+Ensure Python 3.10+ is installed:
 ```bash
 python --version
 ```
